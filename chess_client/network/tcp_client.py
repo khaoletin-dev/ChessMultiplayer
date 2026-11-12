@@ -14,6 +14,8 @@ class ChessTCPClient:
         self.is_connected = False
         self._send_lock = threading.Lock()
         self._listener_thread = None
+        self._room_state_lock = threading.Lock()
+        self._pending_room_state_messages = []
         self.last_error = None
         self.user_data = {}
         self._auth_token = None
@@ -48,6 +50,25 @@ class ChessTCPClient:
         self.on_rooms_list_update = callback
         if callback:
             callback(self.rooms)
+
+    def set_room_state_callback(self, callback):
+        with self._room_state_lock:
+            self.on_room_state_update = callback
+            pending_messages = self._pending_room_state_messages
+            self._pending_room_state_messages = []
+
+        if callback:
+            for message in pending_messages:
+                callback(message)
+
+    def _dispatch_room_state(self, message):
+        with self._room_state_lock:
+            callback = self.on_room_state_update
+            if not callback:
+                self._pending_room_state_messages.append(message)
+                return
+
+        callback(message)
 
     def get_match_history(self):
         self.send_message({"action": "get_match_history"})
@@ -351,8 +372,7 @@ class ChessTCPClient:
                         if self.on_server_error:
                             self.on_server_error(error_message)
                 elif message.get("action") in ("room_state", "game_start"):
-                    if self.on_room_state_update:
-                        self.on_room_state_update(message)
+                    self._dispatch_room_state(message)
                 elif message.get("action") == "game_over":
                     if self.on_game_over:
                         self.on_game_over(message)

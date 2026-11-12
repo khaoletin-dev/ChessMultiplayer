@@ -287,7 +287,7 @@ class BoardWindow(ctk.CTk):
             self.tcp_client.on_chat_received = self.display_chat
             self.tcp_client.on_audio_received = self.display_audio
             self.tcp_client.on_move_received = self.display_move
-            self.tcp_client.on_room_state_update = self.display_room_state
+            self.tcp_client.set_room_state_callback(self.display_room_state)
             self.tcp_client.on_game_over = self.display_game_over
             self.tcp_client.on_match_record_save_status = (
                 self.display_match_record_save_status
@@ -301,7 +301,10 @@ class BoardWindow(ctk.CTk):
         return "Lượt Trắng" if self._turn == "white" else "Lượt Đen"
 
     def display_room_state(self, message):
-        self.after(0, self._update_room_state, message)
+        try:
+            self.after(0, self._update_room_state, message)
+        except TclError:
+            pass
 
     def _update_room_state(self, message):
         self._game_started = (
@@ -1490,6 +1493,7 @@ class BoardWindow(ctk.CTk):
                 print(f"[!] Không thể dừng micro khi đóng cửa sổ: {exc}")
             self._audio_stream = None
         if self.tcp_client:
+            self.tcp_client.set_room_state_callback(None)
             self.tcp_client.disconnect()
         self.destroy()
         if hasattr(self, "on_exit") and self.on_exit:

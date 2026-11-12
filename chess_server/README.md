@@ -96,6 +96,13 @@ Set the same private `CHESS_INTERNAL_SERVER_TOKEN` on the Master Server and
 every Game Node. It is used to sign match-history submissions; do not put it in
 client configuration or commit it to source control.
 
+For a LAN deployment, set `MASTER_SERVER_HOST` in the Game Node launch
+configuration to the Master Server's reachable LAN IP (for example,
+`192.168.1.20`), not `127.0.0.1`. The Master learns the Game Node's address
+from the source IP of its UDP heartbeat and sends that address to clients in
+the handoff message. If the heartbeat uses loopback, clients on other machines
+will try to connect to their own `127.0.0.1` and fail.
+
 Configure these environment variables before starting each process:
 
 | Variable | Process | Default |
