@@ -1,5 +1,6 @@
 import base64
 import io
+import queue
 import threading
 import time
 import webbrowser
@@ -60,6 +61,7 @@ class BoardWindow(ctk.CTk):
         self._call_window = None
         self._call_peer_name = None
         self._video_images = {}
+        self._video_frame_queue = queue.Queue(maxsize=6)
         self._microphone_enabled = False
         self._camera_enabled = False
         self._pending_invite_id = None
@@ -221,16 +223,21 @@ class BoardWindow(ctk.CTk):
         
         self.chat_actions = ctk.CTkFrame(self.panel_frame, fg_color="transparent")
         self.chat_actions.pack(fill="x", padx=15, pady=(0, 15))
+        chat_action_row = ctk.CTkFrame(self.chat_actions, fg_color="transparent")
+        chat_action_row.pack(fill="x")
         self.emoji_btn = ctk.CTkButton(
-            self.chat_actions, text="😊", width=40, command=self.open_emoji_picker
+            chat_action_row, text="😊", width=40, command=self.open_emoji_picker
         )
         self.emoji_btn.pack(side="left", padx=(0, 5))
         self.record_btn = ctk.CTkButton(
-            self.chat_actions, text="🎙 Ghi âm", width=88, command=self.start_audio_recording
+            chat_action_row,
+            text="🎙 Ghi âm",
+            width=88,
+            command=self.start_audio_recording
         )
         self.record_btn.pack(side="left", padx=5)
         self.stop_record_btn = ctk.CTkButton(
-            self.chat_actions,
+            chat_action_row,
             text="■ Gửi audio",
             width=88,
             fg_color="#C62828",
@@ -240,16 +247,16 @@ class BoardWindow(ctk.CTk):
         )
         self.stop_record_btn.pack(side="left", padx=5)
         self.send_btn = ctk.CTkButton(
-            self.chat_actions, text="Gửi", width=48, command=self.send_chat
+            chat_action_row, text="Gửi", width=48, command=self.send_chat
         )
         self.send_btn.pack(side="right", padx=(5, 0))
         self.attach_file_btn = ctk.CTkButton(
             self.chat_actions,
-            text="📎",
-            width=38,
+            text="📎 Gửi tệp (ảnh, video, PDF, Word)",
+            height=34,
             command=self.choose_chat_file
         )
-        self.attach_file_btn.pack(side="left", padx=(0, 5))
+        self.attach_file_btn.pack(fill="x", pady=(6, 0))
         self.chat_status_label = ctk.CTkLabel(
             self.panel_frame,
             text="",
@@ -577,9 +584,11 @@ class BoardWindow(ctk.CTk):
             return
         window = ctk.CTkToplevel(self)
         window.title(f"Cuộc gọi với {self._call_peer_name}")
-        window.geometry("660x390")
-        window.minsize(600, 360)
+        window.geometry("760x500")
+        window.minsize(680, 440)
         window.transient(self)
+        window.lift()
+        window.focus_force()
         for column in range(2):
             window.grid_columnconfigure(column, weight=1)
         window.grid_rowconfigure(1, weight=1)
@@ -643,6 +652,10 @@ class BoardWindow(ctk.CTk):
             )
         )
         self._call_window = window
+        window.after(40, self._drain_video_frames)
+        self._video_images.clear()
+        self._microphone_enabled = False
+        self._camera_enabled = False
 
     def _make_video_tile(self, parent, placeholder, row, column):
         tile = ctk.CTkFrame(parent, fg_color="#101B2C", corner_radius=10)
@@ -698,10 +711,40 @@ class BoardWindow(ctk.CTk):
         self.call_status_label.configure(text=f"{microphone} · {camera}")
 
     def _schedule_video_frame(self, local, frame_data):
+        queued_frame = (local, frame_data)
         try:
-            self.after(0, self._display_video_frame, local, frame_data)
-        except TclError:
+            self._video_frame_queue.put_nowait(queued_frame)
+            return
+        except queue.Full:
             pass
+
+        try:
+            self._video_frame_queue.get_nowait()
+        except queue.Empty:
+            pass
+        try:
+            self._video_frame_queue.put_nowait(queued_frame)
+        except queue.Full:
+            return
+
+    def _drain_video_frames(self):
+        window = self._call_window
+        if not window or not window.winfo_exists():
+            return
+
+        latest_frames = {}
+        while True:
+            try:
+                local, frame_data = self._video_frame_queue.get_nowait()
+            except queue.Empty:
+                break
+            latest_frames[local] = frame_data
+
+        for local, frame_data in latest_frames.items():
+            self._display_video_frame(local, frame_data)
+
+        if self._call_window is window and window.winfo_exists():
+            window.after(40, self._drain_video_frames)
 
     def _display_video_frame(self, local, frame_data):
         if not self._call_window or not self._call_window.winfo_exists():
@@ -762,6 +805,11 @@ class BoardWindow(ctk.CTk):
         self._microphone_enabled = False
         self._camera_enabled = False
         self._video_images.clear()
+        while True:
+            try:
+                self._video_frame_queue.get_nowait()
+            except queue.Empty:
+                break
         window = self._call_window
         self._call_window = None
         if window and window.winfo_exists():

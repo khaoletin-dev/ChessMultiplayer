@@ -85,10 +85,12 @@ other players in the match.
 During a running game, choose **Gọi thoại / video**, select one player, and
 wait for them to accept. A 1vs1 room calls its opponent; in 2vs2, either team
 can invite any one player in the room. The call window shows the local and
-remote video tiles. Microphone and camera are off by default and have separate
-on/off controls. Camera video is sent as small JPEG frames over the Game Node's
-UDP media port; TCP is used only for call invitations and status. Install the
-client requirements to enable webcam capture (`opencv-python`).
+remote video tiles in a separate popup. Microphone and camera are off by
+default and have separate on/off controls in that popup. Camera video is sent
+as small JPEG frames over the Game Node's UDP media port; TCP is used only for
+call invitations and status. Install the client requirements to enable webcam
+capture (`opencv-python`) and allow UDP traffic to `GAME_UDP_PORT` on the Game
+Node.
 
 ## Server connection settings
 
