@@ -763,7 +763,13 @@ class BoardWindow(ctk.CTk):
             label.configure(image=ctk_image, text="")
             label.image = ctk_image
             self._video_images["local" if local else "remote"] = ctk_image
-        except (OSError, ValueError) as exc:
+        except (ImportError, OSError, ValueError) as exc:
+            if isinstance(exc, ImportError):
+                self._show_call_error(
+                    "Thiếu Pillow để hiển thị video. Cài đặt bằng lệnh: "
+                    "pip install -r chess_client/requirements.txt"
+                )
+                return
             self._show_call_error(f"Không thể hiển thị hình ảnh cuộc gọi: {exc}")
 
     def _show_call_error(self, message):
@@ -776,6 +782,7 @@ class BoardWindow(ctk.CTk):
         if (
             "camera" in message.lower()
             or "opencv" in message.lower()
+            or "pillow" in message.lower()
         ):
             self._camera_enabled = False
             if self._call_window and self._call_window.winfo_exists():
