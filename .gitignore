@@ -1,0 +1,4 @@
+.env
+**/firebase_service_acc.json
+__pycache__/
+*.py[cod]

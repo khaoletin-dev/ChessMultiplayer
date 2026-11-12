@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Chess: Master Server",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}\\chess_server\\master_server.py",
+      "cwd": "${workspaceFolder}\\chess_server",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}\\.env",
+      "env": {
+        "CLOUDINARY_CLOUD_NAME": "dyfmgr6vl",
+        "CLOUDINARY_UPLOAD_PRESET": "tiemkiengla"
+      }
+    },
+    {
+      "name": "Chess: Game Node",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}\\chess_server\\game_node.py",
+      "cwd": "${workspaceFolder}\\chess_server",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}\\.env",
+      "env": {"MASTER_SERVER_HOST": "127.0.0.1"}
+    },
+    {
+      "name": "Chess: Client",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}\\chess_client\\main.py",
+      "cwd": "${workspaceFolder}\\chess_client",
+      "console": "integratedTerminal",
+      "env": {
+        "CHESS_SERVER_HOST": "127.0.0.1"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Chess: Run Full Game",
+      "configurations": [
+        "Chess: Master Server",
+        "Chess: Game Node",
+        "Chess: Client"
+      ],
+      "stopAll": true
+    }
+  ]
+}
